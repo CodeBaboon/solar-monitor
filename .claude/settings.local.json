@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.midnitesolar.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s https://raw.githubusercontent.com/randyoo/ha_midnite_modbus/main/custom_components/midnite/registers.json)",
+      "WebFetch(domain:midniteftp.com)",
+      "Bash(curl -s https://api.github.com/repos/ClassicDIY/ClassicMQTT/git/trees/master?recursive=1)",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(item[''''path'''']\\) for item in data.get\\(''''tree'''',[]\\) if item[''''type'''']==''''blob'''']\")",
+      "Bash(curl:*)",
+      "Bash(chmod:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}

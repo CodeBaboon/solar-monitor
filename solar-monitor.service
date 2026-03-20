@@ -1,0 +1,46 @@
+[Unit]
+Description=Solar Monitor — Midnite Classic 200 dashboard
+Documentation=https://github.com/yourusername/solar-monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Run as the dedicated 'solar' user created by install.sh
+User=solar
+Group=solar
+
+# Absolute path to the installation directory
+WorkingDirectory=/opt/solar_monitor
+
+# Activate the Python virtual environment, then run the app
+ExecStart=/opt/solar_monitor/venv/bin/python -m solar_monitor.main
+
+# Restart policy — always restart on failure (hardware glitches, network drops)
+Restart=always
+RestartSec=10
+
+# Give the app up to 30 seconds to start before systemd considers it failed
+TimeoutStartSec=30
+
+# Give the app 15 seconds to shut down cleanly before SIGKILL
+TimeoutStopSec=15
+
+# Log to the systemd journal (stdout/stderr captured automatically)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=solar-monitor
+
+# Environment — override config.py values here without editing source files
+# Uncomment and set CLASSIC_IP if you prefer env-based config (not used by
+# default — config.py is the primary config mechanism).
+# Environment=CLASSIC_IP=192.168.1.100
+
+# Security hardening — limit what the service can do on the system
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/solar_monitor/data /opt/solar_monitor/logs
+
+[Install]
+# Start automatically when the system reaches the multi-user (networked) target
+WantedBy=multi-user.target

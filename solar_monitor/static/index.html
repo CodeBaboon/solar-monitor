@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar Monitor</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <!-- Chart.js from CDN — no Node/npm required -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- chartjs-adapter-date-fns for time-scale axes -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- ======================================================
+     HEADER
+     ====================================================== -->
+<header class="app-header">
+  <h1>&#9728;&#65039; Solar Monitor</h1>
+  <div class="status-pill" id="connection-status">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Connecting…</span>
+  </div>
+</header>
+
+<div class="main-content">
+
+  <!-- Stale data warning banner -->
+  <div class="stale-banner" id="stale-banner">
+    &#9888; Data is stale — connection to the Classic 200 lost.
+    Last update: <span id="stale-last-seen">—</span>
+  </div>
+
+  <!-- ====================================================
+       TAB NAVIGATION
+       ==================================================== -->
+  <nav class="tab-nav" role="tablist">
+    <button class="tab-btn active" data-tab="dashboard" role="tab">Dashboard</button>
+    <button class="tab-btn" data-tab="history"   role="tab">History</button>
+    <button class="tab-btn" data-tab="logs"      role="tab">Logs</button>
+  </nav>
+
+  <!-- ====================================================
+       TAB: DASHBOARD (real-time)
+       ==================================================== -->
+  <section class="tab-panel active" id="tab-dashboard">
+
+    <div class="metrics-grid">
+
+      <!-- Battery SOC — largest card -->
+      <div class="metric-card">
+        <div class="metric-label">Battery SOC</div>
+        <div class="metric-value" id="m-soc">—<span class="metric-unit">%</span></div>
+        <div class="metric-sub" id="m-ah-remaining">— AH remaining</div>
+      </div>
+
+      <!-- PV Watts (with sparkline) -->
+      <div class="metric-card">
+        <div class="metric-label">PV Input</div>
+        <div class="metric-value" id="m-pv-watts">—<span class="metric-unit">W</span></div>
+        <div class="sparkline-wrap">
+          <canvas id="sparkline-pv"></canvas>
+        </div>
+      </div>
+
+      <!-- Battery voltage -->
+      <div class="metric-card">
+        <div class="metric-label">Battery Voltage</div>
+        <div class="metric-value" id="m-batt-v">—<span class="metric-unit">V</span></div>
+        <div class="metric-sub" id="m-batt-current">— A</div>
+      </div>
+
+      <!-- Net battery current -->
+      <div class="metric-card">
+        <div class="metric-label">Net Current</div>
+        <div class="metric-value" id="m-net-current">—<span class="metric-unit">A</span></div>
+        <div class="metric-sub" id="m-net-current-dir">—</div>
+      </div>
+
+      <!-- Charge state -->
+      <div class="metric-card">
+        <div class="metric-label">Charge State</div>
+        <div class="metric-value" style="font-size:1.3rem" id="m-charge-state">—</div>
+        <div class="metric-sub" id="m-output-watts">— W to battery</div>
+      </div>
+
+      <!-- Today's kWh -->
+      <div class="metric-card">
+        <div class="metric-label">Today's Harvest</div>
+        <div class="metric-value" id="m-daily-kwh">—<span class="metric-unit">kWh</span></div>
+        <div class="metric-sub" id="m-lifetime-kwh">— kWh lifetime</div>
+      </div>
+
+      <!-- Heat sink temp -->
+      <div class="metric-card">
+        <div class="metric-label">Heat Sink Temp</div>
+        <div class="metric-value" id="m-heatsink">—<span class="metric-unit">°C</span></div>
+        <div class="metric-sub" id="m-batt-temp">Batt temp: —</div>
+      </div>
+
+      <!-- PV voltage + current detail -->
+      <div class="metric-card">
+        <div class="metric-label">PV Array</div>
+        <div class="metric-value" id="m-pv-voltage">—<span class="metric-unit">V</span></div>
+        <div class="metric-sub" id="m-pv-current">— A input</div>
+      </div>
+
+    </div><!-- /.metrics-grid -->
+
+    <p class="metric-sub" style="margin-top:.25rem;text-align:right" id="last-update-time">
+      Last update: —
+    </p>
+
+  </section><!-- /#tab-dashboard -->
+
+  <!-- ====================================================
+       TAB: HISTORY (charts)
+       ==================================================== -->
+  <section class="tab-panel" id="tab-history">
+
+    <div class="chart-controls">
+      <label>Time range:</label>
+      <button class="range-btn active" data-hours="24">24 h</button>
+      <button class="range-btn" data-hours="168">7 d</button>
+      <button class="range-btn" data-hours="720">30 d</button>
+    </div>
+
+    <div class="charts-grid">
+
+      <div class="chart-card">
+        <h3>Battery SOC</h3>
+        <canvas id="chart-soc"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h3>PV Input Power</h3>
+        <canvas id="chart-pv"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h3>Battery Voltage</h3>
+        <canvas id="chart-batt-v"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h3>Net Battery Current</h3>
+        <canvas id="chart-net-current"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h3>Heat Sink Temperature</h3>
+        <canvas id="chart-heatsink"></canvas>
+      </div>
+
+      <div class="chart-card tall">
+        <h3>Daily kWh Harvested</h3>
+        <canvas id="chart-daily-kwh"></canvas>
+      </div>
+
+    </div>
+
+  </section><!-- /#tab-history -->
+
+  <!-- ====================================================
+       TAB: LOGS
+       ==================================================== -->
+  <section class="tab-panel" id="tab-logs">
+
+    <div class="log-controls">
+      <label for="log-level-select">Level:</label>
+      <select id="log-level-select">
+        <option value="ALL">All</option>
+        <option value="INFO">INFO+</option>
+        <option value="WARNING">WARNING+</option>
+        <option value="ERROR">ERROR+</option>
+      </select>
+
+      <label for="log-lines-select">Lines:</label>
+      <select id="log-lines-select">
+        <option value="100">100</option>
+        <option value="200" selected>200</option>
+        <option value="500">500</option>
+        <option value="1000">1000</option>
+      </select>
+
+      <button id="log-refresh-btn">&#8635; Refresh</button>
+      <button id="log-download-btn">&#8659; Download</button>
+
+      <span style="font-size:.75rem;color:var(--text-muted)" id="log-auto-label">
+        Auto-refresh: on
+      </span>
+    </div>
+
+    <pre id="log-output">Loading logs…</pre>
+
+  </section><!-- /#tab-logs -->
+
+</div><!-- /.main-content -->
+
+<script src="/dashboard.js"></script>
+</body>
+</html>
