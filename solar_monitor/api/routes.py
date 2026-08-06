@@ -126,21 +126,33 @@ async def get_readings(
     hours: float = Query(default=24.0, ge=0.1, le=720.0,
                          description="How many hours of history to return"),
     limit: int  = Query(default=10_000, ge=1, le=50_000,
-                        description="Maximum number of data points"),
+                        description="Maximum number of raw rows (raw mode only)"),
+    max_points: Optional[int] = Query(default=None, ge=10, le=20_000,
+                                      description="Downsample to at most this "
+                                                  "many averaged points"),
 ) -> list[dict]:
     """
     Return historical readings for the requested time window.
 
+    Pass ``max_points`` for anything longer than about a day.  Without it the
+    response is capped at ``limit`` raw rows, which for a 7- or 30-day window
+    covers only a fraction of the range (10,000 rows is under 28 hours at
+    10-second polling).
+
     Args:
-        hours: Window size in hours (1–720, i.e. up to 30 days).
-        limit: Maximum rows returned (guards against very large responses).
+        hours:      Window size in hours (0.1–720, i.e. up to 30 days).
+        limit:      Maximum raw rows returned when not downsampling.
+        max_points: If set, average readings into buckets so the whole window
+                    is covered by at most this many points.
 
     Returns:
         List of reading dicts ordered oldest-first.
     """
     repo = _require_repository()
     since = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
-    readings = repo.get_readings_since(since=since, limit=limit)
+    readings = repo.get_readings_since(
+        since=since, limit=limit, max_points=max_points
+    )
     return [_reading_to_dict(r) for r in readings]
 
 

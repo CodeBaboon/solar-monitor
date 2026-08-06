@@ -404,7 +404,12 @@ function renderLineChart(canvasId, readings, field, colour, yLabel, chartType = 
  * @param {Object[]} summaries - Array of DailySummary objects from /api/daily.
  */
 function renderDailyKwhChart(summaries) {
-  const data = summaries.map(s => ({ x: new Date(s.date + 'T12:00:00Z'), y: s.total_kwh }));
+  // s.date is a LOCAL calendar date from the API.  Appending 'Z' would parse
+  // it as UTC midnight and shift every bar into the wrong day west of GMT
+  // (CDT rendered 2026-08-06T12:00:00Z as "Aug 6, 7:00 AM").  No suffix means
+  // the browser parses it as local time, so noon keeps the bar centred on its
+  // own day regardless of timezone.
+  const data = summaries.map(s => ({ x: new Date(s.date + 'T12:00:00'), y: s.total_kwh }));
 
   if (charts['chart-daily-kwh']) {
     charts['chart-daily-kwh'].data.datasets[0].data = data;
@@ -451,8 +456,13 @@ async function loadHistoryCharts(hours) {
     // Decide how many days to request for the daily summary
     const days = Math.max(1, Math.ceil(hours / 24));
 
+    // Always downsample server-side.  Requesting raw rows caps out at the
+    // API's 10,000-row limit, which is under 28 hours at 10s polling — the
+    // reason the 7d and 30d charts used to stop a day in the past.
+    const MAX_POINTS = 2000;
+
     const [readingsResp, dailyResp] = await Promise.all([
-      fetch(`/api/readings?hours=${hours}`),
+      fetch(`/api/readings?hours=${hours}&max_points=${MAX_POINTS}`),
       fetch(`/api/daily?days=${Math.max(days, 30)}`),
     ]);
 
